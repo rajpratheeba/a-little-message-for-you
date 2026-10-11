@@ -942,4 +942,57 @@ function updateCountdown() {
   document.getElementById("days").textContent = String(days).padStart(2, "0");
   document.getElementById("hours").textContent = String(hours).padStart(2, "0");
   document.getElementById("minutes").textContent = String(minutes).padStart(2, "0");
-  document.getElemen
+  document.getElementById("seconds").textContent = String(seconds).padStart(2, "0");
+
+  message.textContent = "Until our special day";
+}
+
+updateCountdown();
+setInterval(updateCountdown, 1000);
+
+/* Show the actual venue details when configured */
+if (SETTINGS.venueAddress.trim()) {
+  document.getElementById("venue-address").textContent =
+    SETTINGS.venueAddress;
+}
+
+if (SETTINGS.mapUrl.trim()) {
+  document.getElementById("map-link").href = SETTINGS.mapUrl;
+} else {
+  document.getElementById("map-link").style.display = "none";
+}
+
+/* WhatsApp RSVP */
+document.getElementById("rsvp-form").addEventListener("submit", function(event) {
+  event.preventDefault();
+
+  if (!SETTINGS.whatsappNumber.trim()) {
+    alert(
+      "The RSVP form is ready, but the couple's WhatsApp number has not been configured yet."
+    );
+    return;
+  }
+
+  const name = document.getElementById("guest-name").value.trim();
+  const guests = document.getElementById("guest-count").value;
+  const attendance = document.getElementById("attendance").value;
+  const message = document.getElementById("guest-message").value.trim();
+
+  const text =
+    "Wedding RSVP - Raj Pratheeba & Dinesh\n\n" +
+    "Name: " + name + "\n" +
+    "Guests: " + guests + "\n" +
+    "Response: " + attendance + "\n" +
+    "Message: " + (message || "None");
+
+  const url =
+    "https://wa.me/" +
+    SETTINGS.whatsappNumber.replace(/\D/g, "") +
+    "?text=" + encodeURIComponent(text);
+
+  window.open(url, "_blank", "noopener,noreferrer");
+});
+</script>
+
+</body>
+</html>
