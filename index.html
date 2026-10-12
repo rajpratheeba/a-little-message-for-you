@@ -1207,10 +1207,14 @@ a {
     });
   });
 
-  /* Show the music control state on page load */
-  updateMusicControl();
+/* Attempt to autoplay music when the site opens */
+updateMusicControl();
 
-  /* Check for a missing or incorrectly named music file */
+window.addEventListener("load", function () {
+  playMusic();
+});
+
+/* Check for a missing or incorrectly named music file */
   music.addEventListener("error", function () {
     showMusicHint("Music file unavailable. Check drmusic.mp3");
   });
