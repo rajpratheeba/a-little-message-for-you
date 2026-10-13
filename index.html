@@ -14,6 +14,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=Great+Vibes&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
 
 <style>
+@font-face { font-family: 'Anoretha Sweet'; src: url('./Anoretha-Sweet.ttf') format('truetype'); font-display: swap; }
 :root {
   --emerald: #0F5E4A;
   --forest: #173A33;
@@ -154,13 +155,17 @@ a {
   overflow: hidden;
   isolation: isolate;
   border: 1px solid var(--gold);
-  border-radius: 3px;
+  border-radius: 999px;
   background: linear-gradient(
     135deg,
     var(--emerald),
-    var(--forest) 75%
+    rgba(23,58,51,0.78) 75%
   );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--champagne);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   text-align: center;
   font-size: 10px;
   letter-spacing: 2px;
@@ -207,14 +212,15 @@ a {
     0 5px 12px rgba(15, 60, 47, 0.13);
 }
 
-.gloss-button:focus-visible,
-.music-button:focus-visible {
+.gloss-button:focus-visible {
   outline: 2px solid var(--gold);
   outline-offset: 4px;
 }
 
 .gloss-button.light {
-  background: linear-gradient(135deg, var(--champagne), #E9E0D1);
+  background: rgba(246,241,233,0.76);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--forest);
   border-color: var(--gold);
 }
@@ -222,7 +228,9 @@ a {
 /* PAGE 1: OPENING SCREEN */
 
 .opening {
-  position: relative;
+  position: fixed;
+  inset: 0;
+  z-index: 1500;
   min-height: 100svh;
   min-height: 100vh;
   display: flex;
@@ -243,6 +251,13 @@ a {
       #0B2923
     );
   color: var(--champagne);
+  transition: opacity 500ms ease 1500ms, visibility 500ms ease 1500ms;
+}
+
+.opening.opened {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .opening::before,
@@ -288,7 +303,7 @@ a {
   position: relative;
   width: 100%;
   max-width: 490px;
-  padding: 64px 22px 58px;
+  padding: clamp(34px, 7vh, 64px) 22px clamp(30px, 6vh, 58px);
   text-align: center;
   border: 1px solid rgba(196,166,106,0.85);
   outline: 1px solid rgba(196,166,106,0.25);
@@ -300,28 +315,7 @@ a {
   animation: cardReveal 1.3s ease both;
 }
 
-.opening-card::before,
-.opening-card::after {
-  content: "✿";
-  position: absolute;
-  color: var(--gold);
-  font-size: 22px;
-  background: var(--forest);
-  padding: 0 8px;
-}
-
-.opening-card::before {
-  top: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
-.opening-card::after {
-  bottom: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-}
-
+/* No floral glyphs: use ornamental corner frames instead. */
 .opening-initials {
   font-family: 'Cormorant Garamond', serif;
   font-size: clamp(78px, 20vw, 115px);
@@ -365,6 +359,31 @@ a {
 .opening-card .gloss-button {
   margin-top: 36px;
 }
+
+
+/* Separate invitation screens: switching pages never scrolls the document. */
+html, body { height:100%; overflow:hidden; overscroll-behavior:none; touch-action:none; }
+body { position:fixed; inset:0; width:100%; }
+main { position:relative; height:100svh; overflow:hidden; }
+#introduction, #celebrations { position:fixed; inset:0; width:100%; height:100svh; min-height:100svh; margin:0; box-sizing:border-box; overflow:hidden; overscroll-behavior:none; touch-action:none; }
+#introduction { z-index:10; visibility:hidden; opacity:0; pointer-events:none; }
+#introduction.page-active { visibility:visible; opacity:1; pointer-events:auto; }
+#celebrations { z-index:11; visibility:hidden; opacity:0; pointer-events:none; }
+#celebrations.page-active { visibility:visible; opacity:1; pointer-events:auto; }
+#celebrations .container { padding-bottom:0; }
+#celebrations { padding: 38px 18px 92px; }
+#celebrations .celebration-list { gap: 14px; }
+#celebrations .celebration-card { padding: 22px 18px; }
+#celebrations .card-title { font-size: clamp(32px, 7vw, 40px); }
+#celebrations .card-date { font-size: clamp(18px, 4.6vw, 21px); margin-top: 8px; line-height: 1.35; }
+#celebrations .card-divider { margin: 12px auto; }
+#celebrations .venue-card { padding-top: 25px; padding-bottom: 25px; }
+#celebrations .venue-card .card-title { margin-top: 10px !important; }
+#celebrations .venue-card .gloss-button { margin-top: 12px; }
+/* Keep the lower vintage corner frames visible; extra bottom space prevents overlap with the venue card. */
+#celebrations .corner-bottom-left, #celebrations .corner-bottom-right { display:block; }
+#opening { z-index:20; }
+#opening.opened { display:none; }
 
 /* PAGE 2: INTRODUCTION AND COUNTDOWN */
 
@@ -513,8 +532,8 @@ a {
       transparent 55%
     ),
     var(--champagne);
-  padding-top: 84px;
-  padding-bottom: 90px;
+  padding-top: 38px;
+  padding-bottom: 30px;
 }
 
 .celebrations-header {
@@ -529,7 +548,7 @@ a {
 .celebration-list {
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 14px;
 }
 
 .celebration-card {
@@ -545,23 +564,6 @@ a {
   transition:
     transform 250ms ease,
     box-shadow 250ms ease;
-}
-
-.celebration-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 4px;
-  background: linear-gradient(
-    90deg,
-    var(--forest),
-    var(--emerald),
-    var(--gold),
-    var(--sage),
-    var(--forest)
-  );
 }
 
 .celebration-card::after {
@@ -792,6 +794,40 @@ a {
   transform: translateY(0);
 }
 
+
+/* Diagonal vintage page-turn: the sheet falls from the top-right toward the bottom-left. */
+.invitation-leaves { position:fixed; inset:0; z-index:2000; pointer-events:none; perspective:2200px; visibility:hidden; overflow:hidden; }
+.invitation-leaves.active { visibility:visible; }
+.invitation-leaf { position:absolute; inset:-2%; width:104%; height:104%; background:linear-gradient(135deg,#FBF7EF 0%,#F8F0E2 22%,#E6D5B9 47%,#F9F2E7 60%,#DCC9A9 100%); border:1px solid rgba(196,166,106,.9); box-shadow:inset 0 0 60px rgba(23,58,51,.12),0 16px 55px rgba(0,0,0,.18); transform-origin:100% 0%; transform:rotate3d(1,1,0,0deg); backface-visibility:hidden; }
+.invitation-leaf::before { content:""; position:absolute; inset:22px; border:1px solid rgba(160,122,62,.58); outline:1px solid rgba(160,122,62,.22); outline-offset:5px; box-shadow:inset -22px 0 32px rgba(90,62,31,.12); }
+.invitation-leaf::after { content:""; position:absolute; top:-8%; right:-5%; width:34%; height:120%; background:linear-gradient(100deg,transparent 0%,rgba(75,52,30,.04) 35%,rgba(75,52,30,.22) 48%,rgba(255,255,255,.48) 52%,rgba(255,255,255,.05) 62%,transparent 100%); border-radius:0 0 0 75%; transform:skewY(-7deg); filter:blur(2px); }
+.invitation-leaves.active .invitation-leaf { animation: diagonalPageFall 900ms cubic-bezier(.45,.05,.18,1) forwards; }
+@keyframes diagonalPageFall { 0% { transform:rotate3d(1,1,0,0deg) scale(1); opacity:1; border-radius:0; box-shadow:inset 0 0 60px rgba(23,58,51,.12),0 16px 55px rgba(0,0,0,.18); } 28% { transform:rotate3d(1,1,0,18deg) scale(.995); border-radius:0 0 0 3%; } 52% { transform:rotate3d(1,1,0,58deg) scale(.985) translate(-1.5%,1%); border-radius:0 0 0 10%; box-shadow:inset 0 0 45px rgba(23,58,51,.18),-18px 20px 55px rgba(0,0,0,.25); } 78% { transform:rotate3d(1,1,0,100deg) scale(.965) translate(-3%,2%); border-radius:0 0 0 18%; opacity:.92; } 100% { transform:rotate3d(1,1,0,125deg) scale(.94) translate(-5%,4%); border-radius:0 0 0 24%; opacity:.05; box-shadow:inset 0 0 30px rgba(23,58,51,.15),-25px 30px 70px rgba(0,0,0,.12); } }
+.page-turning { animation: pageReveal 1200ms ease both; }
+@keyframes pageReveal { from { opacity:.25; transform:translateY(24px) scale(.975); filter:blur(3px); } to { opacity:1; transform:none; filter:none; } }
+
+/* Vintage botanical corner ornaments inspired by the supplied reference. */
+.closing-message { font-size: clamp(1.2rem, 4.5vw, 1.65rem); line-height: 1.5; }
+.corner-frame { position:relative; isolation:isolate; --corner-size:clamp(66px,17vw,92px); }
+.corner-frame > .corner-top-left,
+.corner-frame > .corner-top-right,
+.corner-frame > .corner-bottom-left,
+.corner-frame > .corner-bottom-right {
+  position:absolute; width:var(--corner-size); height:var(--corner-size);
+  z-index:3; pointer-events:none; opacity:.94; background-repeat:no-repeat;
+  background-size:100% 100%;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg fill='none' stroke='%23c4a66a' stroke-width='1.15' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M24 42C19 54 27 63 19 75C15 81 13 88 11 95'/%3E%3Cpath d='M19 75C24 76 28 80 26 84C24 87 21 85 22 83'/%3E%3Cpath d='M24.5 60C28 62 31 64 33.5 65'/%3E%3Cpath d='M22 46C26 46 29 48 31 49'/%3E%3Cg fill='%23c4a66a' fill-opacity='.24'%3E%3Cg transform='translate(22 50) rotate(150) scale(1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(24.5 58) rotate(35) scale(1.1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(21 69) rotate(150) scale(1.05)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(17.5 78) rotate(28) scale(1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(14 87) rotate(150) scale(0.85)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.18'%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(0.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(60.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(120.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(180.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(240.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(300.0 38 66)'/%3E%3C/g%3E%3Cellipse cx='11' cy='97' rx='1.8' ry='3' fill='%23c4a66a' fill-opacity='.35' transform='rotate(12 11 97)'/%3E%3Cg fill='%23c4a66a' stroke='none'%3E%3Ccircle cx='38' cy='66' r='1.7'/%3E%3Ccircle cx='32' cy='49' r='1.4'/%3E%3Ccircle cx='35' cy='53' r='1.4'/%3E%3Ccircle cx='30' cy='53' r='1.4'/%3E%3Ccircle cx='26' cy='84' r='1.1'/%3E%3C/g%3E%3Cg transform='matrix(0 1 1 0 0 0)'%3E%3Cpath d='M24 42C19 54 27 63 19 75C15 81 13 88 11 95'/%3E%3Cpath d='M19 75C24 76 28 80 26 84C24 87 21 85 22 83'/%3E%3Cpath d='M24.5 60C28 62 31 64 33.5 65'/%3E%3Cpath d='M22 46C26 46 29 48 31 49'/%3E%3Cg fill='%23c4a66a' fill-opacity='.24'%3E%3Cg transform='translate(22 50) rotate(150) scale(1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(24.5 58) rotate(35) scale(1.1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(21 69) rotate(150) scale(1.05)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(17.5 78) rotate(28) scale(1)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(14 87) rotate(150) scale(0.85)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.18'%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(0.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(60.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(120.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(180.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(240.0 38 66)'/%3E%3Cellipse cx='38' cy='61.4' rx='2.5' ry='4.3' transform='rotate(300.0 38 66)'/%3E%3C/g%3E%3Cellipse cx='11' cy='97' rx='1.8' ry='3' fill='%23c4a66a' fill-opacity='.35' transform='rotate(12 11 97)'/%3E%3Cg fill='%23c4a66a' stroke='none'%3E%3Ccircle cx='38' cy='66' r='1.7'/%3E%3Ccircle cx='32' cy='49' r='1.4'/%3E%3Ccircle cx='35' cy='53' r='1.4'/%3E%3Ccircle cx='30' cy='53' r='1.4'/%3E%3Ccircle cx='26' cy='84' r='1.1'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.2'%3E%3Cg transform='translate(41 41) rotate(45) scale(1.7)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(37 45) rotate(64) scale(1.4)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3Cg transform='translate(45 37) rotate(26) scale(1.4)'%3E%3Cpath d='M0 0C3-5 11-6 16 0C11 6 3 5 0 0Z'/%3E%3Cpath d='M1.5 0H13' fill='none' stroke-width='.6'/%3E%3C/g%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.13'%3E%3Cellipse cx='27' cy='14' rx='6.6' ry='10.5' transform='rotate(0.0 27 27)'/%3E%3Cellipse cx='27' cy='14' rx='6.6' ry='10.5' transform='rotate(72.0 27 27)'/%3E%3Cellipse cx='27' cy='14' rx='6.6' ry='10.5' transform='rotate(144.0 27 27)'/%3E%3Cellipse cx='27' cy='14' rx='6.6' ry='10.5' transform='rotate(216.0 27 27)'/%3E%3Cellipse cx='27' cy='14' rx='6.6' ry='10.5' transform='rotate(288.0 27 27)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.16'%3E%3Cellipse cx='27' cy='18.4' rx='4.6' ry='7.4' transform='rotate(36.0 27 27)'/%3E%3Cellipse cx='27' cy='18.4' rx='4.6' ry='7.4' transform='rotate(108.0 27 27)'/%3E%3Cellipse cx='27' cy='18.4' rx='4.6' ry='7.4' transform='rotate(180.0 27 27)'/%3E%3Cellipse cx='27' cy='18.4' rx='4.6' ry='7.4' transform='rotate(252.0 27 27)'/%3E%3Cellipse cx='27' cy='18.4' rx='4.6' ry='7.4' transform='rotate(324.0 27 27)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.2' stroke-width='.9'%3E%3Cellipse cx='27' cy='22' rx='2.8' ry='4' transform='rotate(0.0 27 27)'/%3E%3Cellipse cx='27' cy='22' rx='2.8' ry='4' transform='rotate(72.0 27 27)'/%3E%3Cellipse cx='27' cy='22' rx='2.8' ry='4' transform='rotate(144.0 27 27)'/%3E%3Cellipse cx='27' cy='22' rx='2.8' ry='4' transform='rotate(216.0 27 27)'/%3E%3Cellipse cx='27' cy='22' rx='2.8' ry='4' transform='rotate(288.0 27 27)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' stroke='none'%3E%3Ccircle cx='27' cy='27' r='2.4'/%3E%3Ccircle cx='32.60' cy='27.00' r='.75'/%3E%3Ccircle cx='30.96' cy='30.96' r='.75'/%3E%3Ccircle cx='27.00' cy='32.60' r='.75'/%3E%3Ccircle cx='23.04' cy='30.96' r='.75'/%3E%3Ccircle cx='21.40' cy='27.00' r='.75'/%3E%3Ccircle cx='23.04' cy='23.04' r='.75'/%3E%3Ccircle cx='27.00' cy='21.40' r='.75'/%3E%3Ccircle cx='30.96' cy='23.04' r='.75'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.corner-top-left { top:18px; left:18px; }
+.corner-top-right { top:18px; right:18px; transform:scaleX(-1); }
+.corner-bottom-left { bottom:18px; left:18px; transform:scaleY(-1); }
+.corner-bottom-right { bottom:18px; right:18px; transform:scale(-1,-1); }
+.opening-card { outline:1px solid rgba(196,166,106,.32); outline-offset:5px; }
+.opening-card::before, .opening-card::after { content:none !important; }
+.introduction::after, .celebrations::after, .closing::after { content:''; position:absolute; inset:14px; pointer-events:none; z-index:0; border:1px solid rgba(196,166,106,.32); }
+.intro-inner, .celebrations .container, .closing > * { position:relative; z-index:1; }
+@media (max-height: 720px) { .opening-card { padding-top:32px; padding-bottom:32px; } .opening-card .gloss-button { margin-top:22px; } .introduction { padding-top:30px; padding-bottom:30px; } .countdown-area { margin-top:20px; padding:14px 10px; } .countdown-caption { margin-bottom:10px; } .intro-date { margin-top:15px; } .intro-button { margin-top:17px; } }
+
 /* Animations */
 
 @keyframes halo {
@@ -865,6 +901,19 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Fine-tune the lower edge: keep the venue card clear of the bottom corner frame. */
+#celebrations { padding-bottom: clamp(112px, 15svh, 138px) !important; }
+#celebrations .container { justify-content: flex-start !important; }
+#celebrations .celebration-list { gap: clamp(14px, 2.1svh, 20px) !important; }
+#celebrations .celebration-card { padding-top: clamp(21px, 3svh, 28px) !important; padding-bottom: clamp(21px, 3svh, 28px) !important; }
+#celebrations .venue-card { padding-top: clamp(24px, 3.5svh, 32px) !important; padding-bottom: clamp(24px, 3.5svh, 32px) !important; margin-bottom: 10px; }
+@media (max-height: 760px) {
+  #celebrations { padding-bottom: 124px !important; }
+  #celebrations .celebration-list { gap: 12px !important; }
+  #celebrations .celebration-card { padding-top: 18px !important; padding-bottom: 18px !important; }
+}
+
 </style>
 </head>
 
@@ -873,35 +922,16 @@ a {
 <!-- BACKGROUND MUSIC -->
 <audio id="wedding-music" src="./drmusic.mp3" loop preload="auto"></audio>
 
-<button
-  type="button"
-  class="music-button"
-  id="music-toggle"
-  aria-label="Play background music"
-  aria-pressed="false"
-  title="Play or pause music"
->
-  <span class="music-icon" id="music-icon" aria-hidden="true">♫</span>
-</button>
-
-<div class="music-hint" id="music-hint" aria-live="polite">
-  Tap to play the music
-</div>
-
 <!-- STAGE 1: OPENING INVITATION -->
 <section class="opening" id="opening">
   <div class="opening-glow"></div>
 
-  <div class="opening-card">
+  <div class="opening-card corner-frame"><span class="corner-top-left"></span><span class="corner-top-right"></span><span class="corner-bottom-left"></span><span class="corner-bottom-right"></span>
     <p class="eyebrow">A celebration of love</p>
-
-    <div class="opening-floral">✿ ❧ ✿</div>
 
     <h1 class="opening-initials">
       D <span class="opening-amp">&</span> R
     </h1>
-
-    <div class="opening-floral">❧ ✿ ❧</div>
 
     <p class="opening-caption">You are cordially invited</p>
 
@@ -911,17 +941,16 @@ a {
 
     <button class="gloss-button light" id="open-invitation" type="button">
       <span>Open Invitation</span>
-      <span aria-hidden="true">→</span>
     </button>
   </div>
 </section>
 
+<div class="invitation-leaves" id="invitation-leaves" aria-hidden="true"><div class="invitation-leaf left"></div><div class="invitation-leaf right"></div></div>
 <main>
 
   <!-- STAGE 2: WEDDING INTRODUCTION -->
-  <section class="section introduction" id="introduction">
-    <span class="leaf-decoration leaf-one" aria-hidden="true">❧</span>
-    <span class="leaf-decoration leaf-two" aria-hidden="true">❧</span>
+  <section class="section introduction corner-frame" id="introduction">
+    <span class="corner-top-left"></span><span class="corner-top-right"></span><span class="corner-bottom-left"></span><span class="corner-bottom-right"></span>
 
     <div class="container intro-inner">
       <p class="eyebrow">With love and happiness</p>
@@ -931,8 +960,6 @@ a {
       <div class="couple-names">Dinesh</div>
       <span class="name-ampersand">&</span>
       <div class="couple-names">Raj Pratheeba</div>
-
-      <div class="floral-divider">✿ ❧ ✿</div>
 
       <!-- COUNTDOWN -->
       <div class="countdown-area">
@@ -960,43 +987,28 @@ a {
           </div>
         </div>
 
-        <p class="countdown-message" id="countdown-message" aria-live="polite">
-          Counting down to our special day
-        </p>
       </div>
 
       <p class="intro-date">10 & 11 November, 2026</p>
       <p class="intro-location">Mettupalayam, Coimbatore</p>
 
-      <a class="gloss-button intro-button" href="#celebrations">
-        <span>Events & Venue</span>
-        <span aria-hidden="true">↓</span>
-      </a>
+      <button class="gloss-button intro-button" id="events-button" type="button">Events &amp; Venue</button>
     </div>
   </section>
 
   <!-- STAGE 3: EVENTS AND VENUE -->
-  <section class="section celebrations" id="celebrations">
+  <section class="section celebrations corner-frame" id="celebrations"><span class="corner-top-left"></span><span class="corner-top-right"></span><span class="corner-bottom-left"></span><span class="corner-bottom-right"></span>
     <div class="container">
 
       <header class="celebrations-header">
-        <p class="eyebrow">Save the dates</p>
+        
 
-        <h2 class="section-title">The Celebrations</h2>
-
-        <div class="floral-divider">✿ ❧ ✿</div>
-
-        <p class="section-description">
-          Auspicious occasions of joy, tradition, and togetherness.
-        </p>
       </header>
 
       <div class="celebration-list">
 
         <!-- RECEPTION -->
         <article class="celebration-card">
-          <div class="card-ornament" aria-hidden="true">✿</div>
-          <p class="card-label">First Celebration</p>
           <h3 class="card-title">Reception</h3>
 
           <div class="card-divider"></div>
@@ -1007,17 +1019,10 @@ a {
 
           <p class="card-time">06:30 PM – 08:30 PM</p>
 
-          <div class="floral-divider">❧</div>
-
-          <p class="card-location">
-            An evening of joy, warmth, and celebration.
-          </p>
         </article>
 
         <!-- WEDDING -->
         <article class="celebration-card">
-          <div class="card-ornament" aria-hidden="true">❧</div>
-          <p class="card-label">The Special Day</p>
           <h3 class="card-title">Wedding</h3>
 
           <div class="card-divider"></div>
@@ -1028,24 +1033,17 @@ a {
 
           <p class="card-time">09:15 AM – 10:15 AM</p>
 
-          <p class="card-location">
-            RK Thirumana Mandapam,<br>
-            Mettupalayam, Coimbatore
-          </p>
         </article>
 
         <!-- VENUE -->
         <article class="celebration-card venue-card" id="venue">
-          <div class="card-ornament" aria-hidden="true">✿</div>
-          <p class="card-label">We look forward to welcoming you</p>
-          <h3 class="card-title">Venue</h3>
+          <p class="card-label">Save the dates</p>
+          <p class="card-label" style="margin-top:8px">We look forward to welcoming you</p>
+          <h3 class="card-title" style="margin-top:18px">Venue</h3>
 
           <div class="card-divider"></div>
 
-          <p class="card-location">
-            RK Thirumana Mandapam,<br>
-            Mettupalayam, Coimbatore
-          </p>
+          <p class="card-location">RK Thirumana Mandapam,<br>Mettupalayam, Coimbatore</p>
 
           <a
             class="gloss-button light"
@@ -1053,8 +1051,7 @@ a {
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span>Get Directions</span>
-            <span aria-hidden="true">↗</span>
+            <span aria-hidden="true">⌖</span><span>Get Directions</span>
           </a>
         </article>
 
@@ -1063,11 +1060,9 @@ a {
   </section>
 
   <!-- SIMPLE CLOSING: NO REPEATED NAMES -->
-  <footer class="closing">
-    <div class="botanical">✿ ❧ ✿</div>
-    <p class="script">With love and gratitude</p>
-    <p>Thank you for being part of our celebration.</p>
-    <p>10 & 11 November, 2026</p>
+  <footer class="closing corner-frame">
+    <span class="corner-top-left"></span><span class="corner-top-right"></span><span class="corner-bottom-left"></span><span class="corner-bottom-right"></span>
+    <p class="closing-message">Thank you for being part of our celebration.</p>
   </footer>
 
 </main>
@@ -1085,7 +1080,6 @@ a {
   const hoursEl = document.getElementById("hours");
   const minutesEl = document.getElementById("minutes");
   const secondsEl = document.getElementById("seconds");
-  const messageEl = document.getElementById("countdown-message");
 
   function updateCountdown() {
     const now = Date.now();
@@ -1096,7 +1090,6 @@ a {
       hoursEl.textContent = "00";
       minutesEl.textContent = "00";
       secondsEl.textContent = "00";
-      messageEl.textContent = "Today is our special day!";
       return;
     }
 
@@ -1123,103 +1116,129 @@ a {
     minutesEl.textContent = String(minutes).padStart(2, "0");
     secondsEl.textContent = String(seconds).padStart(2, "0");
 
-    messageEl.textContent = "Counting down to our special day";
   }
 
   updateCountdown();
   window.setInterval(updateCountdown, 1000);
 
-  /* Background music controls */
-  const music = document.getElementById("wedding-music");
-  const musicButton = document.getElementById("music-toggle");
-  const musicIcon = document.getElementById("music-icon");
-  const musicHint = document.getElementById("music-hint");
-  const openButton = document.getElementById("open-invitation");
+     /* Background music: attempt audible autoplay; browser policy may require a tap */
+   const music = document.getElementById("wedding-music");
+   const openButton = document.getElementById("open-invitation");
+   const leaves = document.getElementById("invitation-leaves");
+   const intro = document.getElementById("introduction");
+   const eventsButton = document.getElementById("events-button");
+   const celebrations = document.getElementById("celebrations");
 
-  let hintTimer;
+   function tryPlayMusic() {
+     const promise = music.play();
+     if (promise && typeof promise.catch === "function") promise.catch(function () {});
+   }
+   intro.classList.remove("page-active");
+   celebrations.classList.remove("page-active");
+   tryPlayMusic();
+   window.addEventListener("load", tryPlayMusic, { once: true });
+   document.addEventListener("visibilitychange", function () {
+     if (!document.hidden && music.paused) tryPlayMusic();
+   });
 
-  function showMusicHint(text) {
-    musicHint.textContent = text;
-    musicHint.classList.add("visible");
 
-    window.clearTimeout(hintTimer);
+   /* Keep every page inside the screen: scale content down if the phone is short */
+   function fitPage(page) {
+     const inner = page.querySelector(".container");
+     if (!inner) return;
+     inner.style.transform = "";
+     inner.style.transformOrigin = "center center";
+     const cs = getComputedStyle(page);
+     const avail = page.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+     const h = inner.offsetHeight;
+     if (h > avail && avail > 0) inner.style.transform = "scale(" + (avail / h) + ")";
+   }
+   function fitAll() { fitPage(intro); fitPage(celebrations); }
+   fitAll();
+   window.addEventListener("load", fitAll);
+   window.addEventListener("resize", fitAll);
+   window.addEventListener("orientationchange", fitAll);
+   if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
+   ["touchmove","wheel"].forEach(function (ev) {
+     document.addEventListener(ev, function (e) { e.preventDefault(); }, { passive: false });
+   });
 
-    hintTimer = window.setTimeout(function () {
-      musicHint.classList.remove("visible");
-    }, 3000);
-  }
-
-  function updateMusicControl() {
-    const playing = !music.paused;
-
-    musicIcon.textContent = playing ? "Ⅱ" : "♫";
-
-    musicButton.setAttribute(
-      "aria-label",
-      playing ? "Pause background music" : "Play background music"
-    );
-
-    musicButton.setAttribute(
-      "aria-pressed",
-      playing ? "true" : "false"
-    );
-
-    musicButton.classList.toggle("playing", playing);
-  }
-
-  async function playMusic() {
-    try {
-      await music.play();
-      updateMusicControl();
-      musicHint.classList.remove("visible");
-    } catch (error) {
-      updateMusicControl();
-      showMusicHint("Tap the music button to try again");
-    }
-  }
-
-  function pauseMusic() {
-    music.pause();
-    updateMusicControl();
-  }
-
-  musicButton.addEventListener("click", function () {
-    if (music.paused) {
-      playMusic();
-    } else {
-      pauseMusic();
-    }
-  });
-
-  music.addEventListener("play", updateMusicControl);
-  music.addEventListener("pause", updateMusicControl);
-  music.addEventListener("ended", updateMusicControl);
-
-  /* Open invitation: start music and reveal the next stage */
-  openButton.addEventListener("click", function () {
-    playMusic();
-
-    document.getElementById("introduction").scrollIntoView({
-      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        ? "auto"
-        : "smooth",
-      block: "start"
-    });
-  });
-
-/* Attempt to autoplay music when the site opens */
-updateMusicControl();
-
-window.addEventListener("load", function () {
-  playMusic();
-});
-
-/* Check for a missing or incorrectly named music file */
-  music.addEventListener("error", function () {
-    showMusicHint("Music file unavailable. Check drmusic.mp3");
-  });
+   let transitionRunning = false;
+   function openLikeInvitation(target, isFinal) {
+     if (transitionRunning) return;
+     transitionRunning = true;
+     leaves.classList.remove("active");
+     void leaves.offsetWidth;
+     leaves.classList.add("active");
+     const opening = document.getElementById("opening");
+     const currentPage = isFinal ? intro : opening;
+     // Put the destination on its own fixed viewport before the cover finishes turning.
+     target.classList.add("page-active");
+     if (!isFinal) opening.classList.add("opened");
+     window.setTimeout(function () {
+       if (isFinal) {
+         intro.classList.remove("page-active");
+         history.replaceState(null, "", "#celebrations");
+       } else {
+         history.replaceState(null, "", "#introduction");
+       }
+       leaves.classList.remove("active");
+       transitionRunning = false;
+     }, 900);
+   }
+   openButton.addEventListener("click", function () {
+     tryPlayMusic();
+     openLikeInvitation(intro, false);
+   });
+   eventsButton.addEventListener("click", function () {
+     openLikeInvitation(celebrations, true);
+   });
+   music.addEventListener("error", function () {
+     console.warn("Music file unavailable. Check that drmusic.mp3 is in the repository root.");
+   });
 })();
 </script>
 
 </body>
 </html>
+
+<style>
+/* Balanced mobile layout: spread the three cards across the framed page. */
+#celebrations { padding: clamp(28px, 5svh, 46px) 18px clamp(82px, 12svh, 112px) !important; }
+#celebrations .container { min-height: 0 !important; display: flex; flex-direction: column; justify-content: flex-start; padding-bottom: 0 !important; }
+#celebrations .celebration-list { gap: clamp(18px, 2.8svh, 28px) !important; }
+#celebrations .celebration-card { padding: clamp(25px, 4svh, 36px) 18px !important; border-radius: 2px; }
+#celebrations .venue-card { padding-top: clamp(28px, 4.5svh, 40px) !important; padding-bottom: clamp(28px, 4.5svh, 40px) !important; }
+
+/* Page 3 cards: plain thin gold border, no gradient strips, no hover movement. */
+#celebrations .celebration-card { border: 1px solid rgba(196,166,106,.85) !important; outline: none !important; border-radius: 2px; box-shadow: 0 8px 22px rgba(23,58,51,.07) !important; }
+#celebrations .celebration-card::before { content: none !important; display: none !important; }
+#celebrations .celebration-card:hover { transform: none; }
+#celebrations .venue-card { border-color: var(--gold) !important; box-shadow: 0 10px 24px rgba(23,58,51,.14) !important; }
+
+@media (max-height: 760px) {
+  #celebrations { padding-top: 22px !important; padding-bottom: 76px !important; }
+  #celebrations .celebration-list { gap: 14px !important; }
+  #celebrations .celebration-card { padding-top: 21px !important; padding-bottom: 21px !important; }
+}
+
+/* Fine-tune the lower edge: keep the venue card clear of the bottom corner frame. */
+#celebrations { padding-bottom: clamp(112px, 15svh, 138px) !important; }
+#celebrations .container { justify-content: flex-start !important; }
+#celebrations .celebration-list { gap: clamp(14px, 2.1svh, 20px) !important; }
+#celebrations .celebration-card { padding-top: clamp(21px, 3svh, 28px) !important; padding-bottom: clamp(21px, 3svh, 28px) !important; }
+#celebrations .venue-card { padding-top: clamp(24px, 3.5svh, 32px) !important; padding-bottom: clamp(24px, 3.5svh, 32px) !important; margin-bottom: 10px; }
+@media (max-height: 760px) {
+  #celebrations { padding-bottom: 124px !important; }
+  #celebrations .celebration-list { gap: 12px !important; }
+  #celebrations .celebration-card { padding-top: 18px !important; padding-bottom: 18px !important; }
+}
+
+
+/* Page 3: smaller corners, and content sits between the top and bottom corners (no overlap). */
+section#celebrations.celebrations { --corner-size: clamp(62px, 17vw, 84px); display: flex; flex-direction: column; justify-content: center; align-items: center; padding: calc(var(--corner-size) + 26px) 22px calc(var(--corner-size) + 26px) !important; }
+section#celebrations.celebrations .container { flex: 0 0 auto; min-height: 0 !important; margin: 0 auto; justify-content: flex-start; }
+section#celebrations.celebrations .celebration-list { gap: 14px !important; }
+section#celebrations.celebrations .celebration-card { padding-top: 20px !important; padding-bottom: 20px !important; }
+section#celebrations.celebrations .venue-card { margin-bottom: 0; padding-top: 24px !important; padding-bottom: 24px !important; }
+</style>
