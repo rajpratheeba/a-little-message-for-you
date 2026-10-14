@@ -920,7 +920,7 @@ main { position:relative; height:100svh; overflow:hidden; }
 <body>
 
 <!-- BACKGROUND MUSIC -->
-<audio id="wedding-music" src="./drmusic.mp3" loop preload="auto"></audio>
+<audio id="wedding-music" src="./drmusic.mp3" loop preload="auto" autoplay playsinline></audio>
 
 <!-- STAGE 1: OPENING INVITATION -->
 <section class="opening" id="opening">
@@ -945,7 +945,6 @@ main { position:relative; height:100svh; overflow:hidden; }
   </div>
 </section>
 
-<div class="invitation-leaves" id="invitation-leaves" aria-hidden="true"><div class="invitation-leaf left"></div><div class="invitation-leaf right"></div></div>
 <main>
 
   <!-- STAGE 2: WEDDING INTRODUCTION -->
@@ -1051,7 +1050,7 @@ main { position:relative; height:100svh; overflow:hidden; }
             target="_blank"
             rel="noopener noreferrer"
           >
-            <span aria-hidden="true">⌖</span><span>Get Directions</span>
+            <span>Get Directions</span>
           </a>
         </article>
 
@@ -1066,6 +1065,9 @@ main { position:relative; height:100svh; overflow:hidden; }
   </footer>
 
 </main>
+
+<canvas id="fireflies" aria-hidden="true"></canvas>
+<div id="turn-layer" aria-hidden="true"><div id="turn-shade"></div><div id="turn-flap-wrap"><div id="turn-flap"></div></div></div>
 
 <button class="music-button" id="music-toggle" type="button" aria-label="Play music" aria-pressed="false">
   <svg class="icon-play" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M8 5.5v13l11-6.5z" fill="currentColor"/></svg>
@@ -1129,7 +1131,6 @@ main { position:relative; height:100svh; overflow:hidden; }
      /* Background music: attempt audible autoplay; browser policy may require a tap */
    const music = document.getElementById("wedding-music");
    const openButton = document.getElementById("open-invitation");
-   const leaves = document.getElementById("invitation-leaves");
    const intro = document.getElementById("introduction");
    const eventsButton = document.getElementById("events-button");
    const celebrations = document.getElementById("celebrations");
@@ -1147,13 +1148,14 @@ main { position:relative; height:100svh; overflow:hidden; }
    window.addEventListener("pageshow", tryPlayMusic);
    music.addEventListener("canplay", function () { if (music.paused) tryPlayMusic(); }, { once: true });
    /* If the browser blocks sound on open, start it on the very first touch/click/key anywhere on the page. */
-   ["pointerup", "touchend", "click", "keydown"].forEach(function (ev) {
+   const unlockEvents = ["pointerdown", "touchstart", "mousedown", "pointerup", "touchend", "click", "keydown"];
+   unlockEvents.forEach(function (ev) {
      document.addEventListener(ev, function unlock(e) {
        if (userPaused || (e.target.closest && e.target.closest("#music-toggle"))) return;
        const pr = music.play();
        if (pr && typeof pr.then === "function") {
          pr.then(function () {
-           ["pointerup", "touchend", "click", "keydown"].forEach(function (e2) { document.removeEventListener(e2, unlock, true); });
+           unlockEvents.forEach(function (e2) { document.removeEventListener(e2, unlock, true); });
          }).catch(function () {});
        }
      }, true);
@@ -1206,36 +1208,211 @@ main { position:relative; height:100svh; overflow:hidden; }
    });
    syncMusicButton();
 
-   let transitionRunning = false;
-   function openLikeInvitation(target, isFinal) {
-     if (transitionRunning) return;
-     transitionRunning = true;
-     leaves.classList.remove("active");
-     void leaves.offsetWidth;
-     leaves.classList.add("active");
-     const opening = document.getElementById("opening");
-     const currentPage = isFinal ? intro : opening;
-     // Put the destination on its own fixed viewport before the cover finishes turning.
-     target.classList.add("page-active");
-     if (!isFinal) opening.classList.add("opened");
-     window.setTimeout(function () {
-       if (isFinal) {
-         intro.classList.remove("page-active");
-         history.replaceState(null, "", "#celebrations");
-       } else {
-         history.replaceState(null, "", "#introduction");
+   /* Side vines: add four edge ornaments to every framed page */
+   document.querySelectorAll(".corner-frame").forEach(function (f) {
+     ["top", "right", "bottom", "left"].forEach(function (n) {
+       const e = document.createElement("span");
+       e.className = "edge edge-" + n;
+       e.setAttribute("aria-hidden", "true");
+       f.appendChild(e);
+     });
+   });
+
+   /* ---------- Page turn: the sheet peels from the top-right corner ---------- */
+   const opening = document.getElementById("opening");
+   const pages = [opening, intro, celebrations];
+   const hashes = ["", "#introduction", "#celebrations"];
+   const layer = document.getElementById("turn-layer");
+   const shade = document.getElementById("turn-shade");
+   const flap = document.getElementById("turn-flap");
+   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+   const SQ2 = Math.SQRT2;
+   let current = 0;
+   let busy = false;
+
+   function showPage(el) { if (el === opening) opening.classList.remove("opened"); else el.classList.add("page-active"); }
+   function hidePage(el) { if (el === opening) opening.classList.add("opened"); else el.classList.remove("page-active"); }
+   function poly(pts) { return "polygon(" + pts.map(function (q) { return q[0].toFixed(1) + "px " + q[1].toFixed(1) + "px"; }).join(",") + ")"; }
+   function easeInOut(t) { return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2; }
+
+   /* Half-plane clip. g = distance-like value measured from the top-right corner along the diagonal. */
+   function clipPoly(pts, s, keepLess, W) {
+     const g = function (q) { return (W - q[0]) + q[1]; };
+     const out = [];
+     for (let i = 0; i < pts.length; i++) {
+       const a = pts[i], b = pts[(i + 1) % pts.length];
+       const ia = keepLess ? g(a) <= s : g(a) >= s;
+       const ib = keepLess ? g(b) <= s : g(b) >= s;
+       if (ia) out.push(a);
+       if (ia !== ib) {
+         const t = (s - g(a)) / (g(b) - g(a));
+         out.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
        }
-       leaves.classList.remove("active");
-       transitionRunning = false;
-     }, 900);
+     }
+     return out;
    }
-   openButton.addEventListener("click", function () {
-     tryPlayMusic();
-     openLikeInvitation(intro, false);
-   });
-   eventsButton.addEventListener("click", function () {
-     openLikeInvitation(celebrations, true);
-   });
+
+   function drawTurn(topEl, s, W, H, smax) {
+     if (s <= 0.5) {
+       topEl.style.clipPath = "";
+       flap.style.clipPath = "polygon(0 0,0 0,0 0)";
+       shade.style.background = "none";
+       return;
+     }
+     const rect = [[0, 0], [W, 0], [W, H], [0, H]];
+     const g = function (q) { return (W - q[0]) + q[1]; };
+     if (s >= smax - 0.5) {
+       topEl.style.clipPath = "polygon(0 0,0 0,0 0)";
+     } else {
+       const remain = clipPoly(rect, s, false, W);
+       topEl.style.clipPath = remain.length >= 3 ? poly(remain) : "polygon(0 0,0 0,0 0)";
+     }
+     const peeled = clipPoly(rect, s, true, W);
+     const refl = peeled.map(function (q) { const k = s - g(q); return [q[0] - k, q[1] + k]; });
+     flap.style.clipPath = refl.length >= 3 ? poly(refl) : "polygon(0 0,0 0,0 0)";
+     const f = s / SQ2;
+     const hl = Math.min(f * 0.14, 46);
+     flap.style.background =
+       "linear-gradient(225deg, transparent " + f.toFixed(1) + "px," +
+       "rgba(45,30,12,.38) " + (f + 0.5).toFixed(1) + "px," +
+       "rgba(255,255,255,.62) " + (f + hl).toFixed(1) + "px," +
+       "rgba(255,255,255,0) " + (f + f * 0.42).toFixed(1) + "px," +
+       "rgba(70,50,25,.17) " + (2 * f).toFixed(1) + "px), #EFE5D0";
+     const d = Math.min(80, s * 0.7);
+     shade.style.background =
+       "linear-gradient(225deg, transparent " + ((s - d) / SQ2).toFixed(1) + "px," +
+       "rgba(8,5,2,.34) " + f.toFixed(1) + "px," +
+       "transparent " + (f + 0.6).toFixed(1) + "px)";
+   }
+
+   /* topEl sits on top. forward: it peels away (s 0 -> max). back: it is laid back down (s max -> 0). */
+   function turnPage(topEl, forward, done) {
+     const r = topEl.getBoundingClientRect();
+     const W = r.width, H = r.height, smax = W + H + 2;
+     const duration = reduceMotion ? 1 : 1300;
+     topEl.style.zIndex = "30";
+     layer.classList.add("on");
+     const start = performance.now();
+     function step(now) {
+       const t = Math.min(1, (now - start) / duration);
+       const e = easeInOut(t);
+       drawTurn(topEl, smax * (forward ? e : 1 - e), W, H, smax);
+       if (t < 1) { requestAnimationFrame(step); } else { layer.classList.remove("on"); done(); }
+     }
+     drawTurn(topEl, forward ? 0 : smax, W, H, smax);
+     requestAnimationFrame(step);
+   }
+
+   function goTo(index) {
+     if (busy || index === current || index < 0 || index >= pages.length) return;
+     busy = true;
+     const from = pages[current], to = pages[index];
+     const forward = index > current;
+     function finish() {
+       from.style.clipPath = ""; from.style.zIndex = "";
+       to.style.clipPath = ""; to.style.zIndex = "";
+       hidePage(from);
+       current = index;
+       try { history.replaceState(null, "", hashes[index] || location.pathname); } catch (err) {}
+       busy = false;
+     }
+     if (forward) {
+       showPage(to);
+       turnPage(from, true, finish);
+     } else {
+       to.style.zIndex = "30";
+       to.style.clipPath = "polygon(0 0,0 0,0 0)";
+       showPage(to);
+       turnPage(to, false, finish);
+     }
+   }
+   function goBack() { goTo(current - 1); }
+
+   openButton.addEventListener("click", function () { tryPlayMusic(); goTo(1); });
+   eventsButton.addEventListener("click", function () { goTo(2); });
+
+   /* Swipe left-to-right (finger or mouse drag) = back to the previous page */
+   let sx = 0, sy = 0, st = 0, tracking = false;
+   document.addEventListener("pointerdown", function (e) {
+     if (e.target.closest && e.target.closest("#music-toggle")) return;
+     sx = e.clientX; sy = e.clientY; st = Date.now(); tracking = true;
+   }, { passive: true });
+   document.addEventListener("pointerup", function (e) {
+     if (!tracking) return;
+     tracking = false;
+     const dx = e.clientX - sx, dy = e.clientY - sy;
+     if (dx > 60 && Math.abs(dx) > Math.abs(dy) * 1.4 && Date.now() - st < 1000) goBack();
+   }, { passive: true });
+   document.addEventListener("pointercancel", function () { tracking = false; }, { passive: true });
+
+   /* ---------- Fireflies rising from the bottom ---------- */
+   (function () {
+     const cv = document.getElementById("fireflies");
+     if (!cv || reduceMotion || !cv.getContext) return;
+     const ctx = cv.getContext("2d");
+     let W = 0, H = 0, dpr = 1, last = 0, time = 0;
+     const flies = [];
+     function size() {
+       dpr = Math.min(window.devicePixelRatio || 1, 2);
+       W = window.innerWidth; H = window.innerHeight;
+       cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+     }
+     function gauss() { return (Math.random() + Math.random() + Math.random() - 1.5) / 1.5; }
+     const clusters = [0.1, 0.32, 0.55, 0.78, 0.95];
+     function spawn(p, initial) {
+       const c = clusters[Math.floor(Math.random() * clusters.length)] * W;
+       p.x0 = Math.max(6, Math.min(W - 6, c + gauss() * W * 0.14));
+       p.y = initial ? H * (0.25 + Math.random() * 0.75) : H + 6 + Math.random() * 30;
+       p.r = 0.9 + Math.random() * 1.5;
+       p.vy = 12 + Math.random() * 20;
+       p.sway = 8 + Math.random() * 20;
+       p.freq = 0.35 + Math.random() * 0.8;
+       p.ph = Math.random() * 6.283;
+       p.tw = 1.2 + Math.random() * 2.2;
+       p.peak = 0.55 + Math.random() * 0.45;
+       p.top = H * (0.18 + Math.random() * 0.5);
+     }
+     function init() {
+       size();
+       flies.length = 0;
+       const n = W < 520 ? 24 : 38;
+       for (let i = 0; i < n; i++) { const p = {}; spawn(p, true); flies.push(p); }
+     }
+     function frame(now) {
+       const dt = Math.min(0.05, (now - last) / 1000 || 0.016);
+       last = now; time += dt;
+       ctx.clearRect(0, 0, W, H);
+       for (let i = 0; i < flies.length; i++) {
+         const p = flies[i];
+         p.y -= p.vy * dt;
+         if (p.y < p.top - 40) { spawn(p, false); continue; }
+         const x = p.x0 + Math.sin(time * p.freq + p.ph) * p.sway;
+         const rise = Math.min(1, Math.max(0, (H + 10 - p.y) / (H * 0.12)));
+         const fall = Math.min(1, Math.max(0, (p.y - (p.top - 40)) / 120));
+         const tw = 0.55 + 0.45 * Math.sin(time * p.tw + p.ph * 2);
+         const a = p.peak * rise * fall * tw;
+         if (a < 0.02) continue;
+         const R = p.r * 6;
+         const gr = ctx.createRadialGradient(x, p.y, 0, x, p.y, R);
+         gr.addColorStop(0, "rgba(236,196,98," + (a * 0.55).toFixed(3) + ")");
+         gr.addColorStop(1, "rgba(236,196,98,0)");
+         ctx.fillStyle = gr;
+         ctx.beginPath(); ctx.arc(x, p.y, R, 0, 6.283); ctx.fill();
+         ctx.fillStyle = "rgba(255,226,140," + Math.min(1, a * 1.15).toFixed(3) + ")";
+         ctx.beginPath(); ctx.arc(x, p.y, p.r, 0, 6.283); ctx.fill();
+       }
+       raf = requestAnimationFrame(frame);
+     }
+     let raf = 0;
+     init();
+     window.addEventListener("resize", init);
+     document.addEventListener("visibilitychange", function () {
+       if (document.hidden) { cancelAnimationFrame(raf); } else { last = performance.now(); raf = requestAnimationFrame(frame); }
+     });
+     raf = requestAnimationFrame(frame);
+   })();
+
    music.addEventListener("error", function () {
      console.warn("Music file unavailable. Check that drmusic.mp3 is in the repository root.");
    });
@@ -1295,4 +1472,70 @@ section#celebrations.celebrations .venue-card { margin-bottom: 0; padding-top: 2
 
 /* Opening card: smaller corners and extra space so they never touch the text or the button */
 .opening-card.corner-frame { --corner-size: clamp(48px, 13vw, 58px); padding-top: 84px !important; padding-bottom: 84px !important; }
+
+/* ===== Round 4 ===== */
+
+/* Opening page: "D & R" in Anoretha Sweet (falls back to a script font if the file is missing) */
+.opening-initials { font-family: 'Anoretha Sweet', 'Great Vibes', cursive; font-weight: 400; letter-spacing: 0; }
+.opening-amp { font-style: normal; font-family: inherit; }
+.opening-caption { font-size: clamp(20px, 5.6vw, 29px); text-wrap: balance; }
+
+/* True centering on phones: no 100vh/100svh heights (they ignore the browser toolbar) */
+.opening { min-height: 0 !important; height: auto !important; }
+#introduction, #celebrations { height: auto !important; min-height: 0 !important; }
+main { height: 100%; }
+/* letter-spacing leaves an empty gap after the last letter; balance it so text sits in the true centre */
+.eyebrow { padding-left: 4px; }
+.opening-subcaption { padding-left: 3px; }
+.intro-location { padding-left: 2px; }
+.card-label { padding-left: 3px; }
+.gloss-button { padding-left: 30px; }
+
+/* Opening state: all pages stay in the layout so they can turn back and forth */
+#opening { transition: none !important; }
+#opening.opened { display: flex !important; }
+
+/* Floral vine along the four sides, between the corner flowers */
+.corner-frame > .edge {
+  position: absolute; z-index: 2; pointer-events: none; opacity: .92;
+  background-repeat: repeat-x; background-position: center;
+}
+.corner-frame > .edge-top, .corner-frame > .edge-bottom {
+  height: 18px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 24'%3E%3Cg stroke='%23c4a66a' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 12C10 2 20 2 30 12C40 22 50 22 60 12' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.26'%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(9.5 6.4) rotate(-140)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(20.5 6.4) rotate(-40)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(39.5 17.6) rotate(140)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(50.5 17.6) rotate(40)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.2'%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(0 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(72 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(144 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(216 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(288 30 12)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' stroke='none'%3E%3Ccircle cx='30' cy='12' r='1.3'/%3E%3Ccircle cx='15' cy='3.2' r='.9'/%3E%3Ccircle cx='45' cy='20.8' r='.9'/%3E%3Ccircle cx='5.5' cy='9.5' r='.7'/%3E%3Ccircle cx='54.5' cy='14.5' r='.7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); background-size: auto 18px;
+  left: calc(18px + var(--corner-size) - 4px); right: calc(18px + var(--corner-size) - 4px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+.corner-frame > .edge-left, .corner-frame > .edge-right {
+  width: 18px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 60'%3E%3Cg transform='matrix(0 1 1 0 0 0)' stroke='%23c4a66a' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M0 12C10 2 20 2 30 12C40 22 50 22 60 12' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.26'%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(9.5 6.4) rotate(-140)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(20.5 6.4) rotate(-40)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(39.5 17.6) rotate(140)'/%3E%3Cpath d='M0 0C2-3 7-3.5 10 0C7 3.5 2 3 0 0Z' transform='translate(50.5 17.6) rotate(40)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.2'%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(0 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(72 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(144 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(216 30 12)'/%3E%3Cellipse cx='30' cy='8.6' rx='1.9' ry='3' transform='rotate(288 30 12)'/%3E%3C/g%3E%3Cg fill='%23c4a66a' stroke='none'%3E%3Ccircle cx='30' cy='12' r='1.3'/%3E%3Ccircle cx='15' cy='3.2' r='.9'/%3E%3Ccircle cx='45' cy='20.8' r='.9'/%3E%3Ccircle cx='5.5' cy='9.5' r='.7'/%3E%3Ccircle cx='54.5' cy='14.5' r='.7'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); background-size: 18px auto; background-repeat: repeat-y;
+  top: calc(18px + var(--corner-size) - 4px); bottom: calc(18px + var(--corner-size) - 4px);
+  -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0, #000 12%, #000 88%, transparent 100%);
+}
+.corner-frame > .edge-top { top: calc(18px + var(--corner-size) * .2 - 9px); }
+.corner-frame > .edge-bottom { bottom: calc(18px + var(--corner-size) * .2 - 9px); transform: scaleY(-1); }
+.corner-frame > .edge-left { left: calc(18px + var(--corner-size) * .2 - 9px); }
+.corner-frame > .edge-right { right: calc(18px + var(--corner-size) * .2 - 9px); transform: scaleX(-1); }
+/* make room for the side vines */
+.opening-card.corner-frame { padding-left: 40px !important; padding-right: 40px !important; }
+#introduction { padding-left: 44px !important; padding-right: 44px !important; }
+section#celebrations.celebrations { padding-left: 44px !important; padding-right: 44px !important; }
+
+/* Fireflies */
+#fireflies { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 35; pointer-events: none; }
+
+/* Page turn from the top-right corner */
+#turn-layer { position: fixed; inset: 0; z-index: 40; pointer-events: none; display: none; overflow: hidden; }
+#turn-layer.on { display: block; }
+#turn-shade, #turn-flap-wrap, #turn-flap { position: absolute; inset: 0; }
+#turn-flap-wrap { filter: drop-shadow(-5px 7px 9px rgba(20,12,4,.38)); }
+
+/* Page 2: keep text clear of the vines and corner flowers, on tall and short phones */
+#introduction { padding-top: calc(var(--corner-size) + 26px) !important; padding-bottom: calc(var(--corner-size) + 26px) !important; }
+.introduction .couple-names { font-size: clamp(42px, 11.8vw, 76px); }
+@media (max-height: 700px) {
+  .corner-frame { --corner-size: 62px; }
+  .opening-card.corner-frame { --corner-size: 48px; }
+  section#celebrations.celebrations { --corner-size: 56px; }
+}
 </style>
