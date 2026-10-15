@@ -1229,6 +1229,7 @@ main { position:relative; height:100svh; overflow:hidden; }
    const SQ2 = Math.SQRT2;
    let current = 0;
    let busy = false;
+   let pending = null;
 
    function showPage(el) { if (el === opening) opening.classList.remove("opened"); else el.classList.add("page-active"); }
    function hidePage(el) { if (el === opening) opening.classList.add("opened"); else el.classList.remove("page-active"); }
@@ -1303,9 +1304,10 @@ main { position:relative; height:100svh; overflow:hidden; }
      requestAnimationFrame(step);
    }
 
-   function goTo(index) {
+   function goTo(index, fromHistory) {
      if (busy || index === current || index < 0 || index >= pages.length) return;
      busy = true;
+     if (!fromHistory) { try { history.pushState({ page: index }, "", hashes[index] || location.pathname); } catch (err) {} }
      const from = pages[current], to = pages[index];
      const forward = index > current;
      function finish() {
@@ -1313,8 +1315,11 @@ main { position:relative; height:100svh; overflow:hidden; }
        to.style.clipPath = ""; to.style.zIndex = "";
        hidePage(from);
        current = index;
-       try { history.replaceState(null, "", hashes[index] || location.pathname); } catch (err) {}
        busy = false;
+       if (pending !== null) {
+         const t = pending; pending = null;
+         if (t !== current) goTo(t, true);
+       }
      }
      if (forward) {
        showPage(to);
@@ -1326,7 +1331,21 @@ main { position:relative; height:100svh; overflow:hidden; }
        turnPage(to, false, finish);
      }
    }
-   function goBack() { goTo(current - 1); }
+   function goBack() {
+     if (busy || current === 0) return;
+     if (history.state && history.state.page === current) { history.back(); } else { goTo(current - 1, true); }
+   }
+   /* Keyboard: Left Arrow also goes back */
+   document.addEventListener("keydown", function (e) {
+     if (e.key === "ArrowLeft") goBack();
+   });
+   /* Browser Back / Forward (Chrome's top-left arrows) move between the pages */
+   try { history.replaceState({ page: 0 }, "", location.pathname + location.search); } catch (err) {}
+   window.addEventListener("popstate", function (e) {
+     const target = e.state && typeof e.state.page === "number" ? e.state.page : 0;
+     if (busy) { pending = target; return; }
+     goTo(target, true);
+   });
 
    openButton.addEventListener("click", function () { tryPlayMusic(); goTo(1); });
    eventsButton.addEventListener("click", function () { goTo(2); });
@@ -1542,4 +1561,46 @@ section#celebrations.celebrations { padding-left: 44px !important; padding-right
 /* Opening page: clear space around "D & R" so tall script letters never touch the lines above or below */
 .opening-card .opening-initials { line-height: 1.3; margin-top: clamp(22px, 4.5vh, 38px); margin-bottom: clamp(12px, 2.5vh, 22px); padding-top: 6px; }
 .opening-card .opening-caption { margin-top: 4px; }
+
+/* ===== Round 5 (only the requested changes) ===== */
+
+/* Page 1: D & R smaller, same font as the names on page 2, & kept well inside the frame */
+.opening-initials { font-family: 'Great Vibes', cursive; font-size: clamp(66px, 17vw, 98px); white-space: nowrap; }
+.opening-amp { font-size: .6em; margin: 0 .06em; display: inline-block; }
+
+/* Page 2: green text, and elegant dividers above and below the timer */
+.introduction .eyebrow { color: var(--emerald); }
+.name-ampersand { color: var(--emerald); }
+.countdown-area { position: relative; border-top: 0; border-bottom: 0; }
+.countdown-area::before, .countdown-area::after {
+  content: ""; position: absolute; left: 0; right: 0; height: 18px; pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 18'%3E%3Cg stroke='%23c4a66a' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M33 9C28 9 25 6.2 20 6.2C16 6.2 14 8 11 9' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.28'%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(24 6.6) rotate(-38)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(18 6.4) rotate(-150)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(23 9.6) rotate(40)'/%3E%3C/g%3E%3Cpath d='M6 6.5L8.5 9L6 11.5L3.5 9Z' fill='%23c4a66a' stroke='none'/%3E%3Cg transform='translate(80 0) scale(-1 1)'%3E%3Cpath d='M33 9C28 9 25 6.2 20 6.2C16 6.2 14 8 11 9' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.28'%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(24 6.6) rotate(-38)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(18 6.4) rotate(-150)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(23 9.6) rotate(40)'/%3E%3C/g%3E%3Cpath d='M6 6.5L8.5 9L6 11.5L3.5 9Z' fill='%23c4a66a' stroke='none'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.22'%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(0 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(72 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(144 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(216 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(288 40 9)'/%3E%3C/g%3E%3Ccircle cx='40' cy='9' r='1.4' fill='%23c4a66a' stroke='none'/%3E%3C/g%3E%3C/svg%3E") center / auto 18px no-repeat,
+    linear-gradient(90deg, rgba(196,166,106,0) 0, rgba(196,166,106,.9) 22%, rgba(196,166,106,.9) calc(50% - 40px), rgba(196,166,106,0) calc(50% - 40px), rgba(196,166,106,0) calc(50% + 40px), rgba(196,166,106,.9) calc(50% + 40px), rgba(196,166,106,.9) 78%, rgba(196,166,106,0) 100%) center / 100% 1px no-repeat;
+}
+.countdown-area::before { top: -9px; }
+.countdown-area::after { bottom: -9px; transform: scaleY(-1); }
+
+/* Page 3: narrower boxes so they stay clear of the side vines */
+section#celebrations.celebrations { padding-left: 54px !important; padding-right: 54px !important; }
+#celebrations .celebration-card { padding-left: 10px !important; padding-right: 10px !important; }
+
+/* Music button: invisible, still tappable in the same place */
+.music-button { opacity: 0 !important; background: transparent !important; border-color: transparent !important; box-shadow: none !important; }
+
+/* ===== Round 6 ===== */
+
+/* Timer block: equal visible space above the caption and below the boxes; lines as wide as the timer boxes */
+.countdown-area { --cd-pad-x: 12px; --cd-pad-y: 24px; padding: calc(var(--cd-pad-y) - 11px) var(--cd-pad-x) var(--cd-pad-y); }
+@media (max-height: 720px) { .countdown-area { --cd-pad-x: 10px; --cd-pad-y: 14px; } }
+.countdown-area::before, .countdown-area::after { left: var(--cd-pad-x); right: var(--cd-pad-x); }
+
+
+/* Page 3: same ornamental divider as the timer, under Reception / Wedding / Venue */
+#celebrations .card-divider {
+  width: min(100%, 240px); height: 18px; margin: 4px auto;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 18'%3E%3Cg stroke='%23c4a66a' stroke-width='1' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M33 9C28 9 25 6.2 20 6.2C16 6.2 14 8 11 9' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.28'%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(24 6.6) rotate(-38)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(18 6.4) rotate(-150)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(23 9.6) rotate(40)'/%3E%3C/g%3E%3Cpath d='M6 6.5L8.5 9L6 11.5L3.5 9Z' fill='%23c4a66a' stroke='none'/%3E%3Cg transform='translate(80 0) scale(-1 1)'%3E%3Cpath d='M33 9C28 9 25 6.2 20 6.2C16 6.2 14 8 11 9' fill='none'/%3E%3Cg fill='%23c4a66a' fill-opacity='.28'%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(24 6.6) rotate(-38)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(18 6.4) rotate(-150)'/%3E%3Cpath d='M0 0C2-2.6 6-3 9 0C6 3 2 2.6 0 0Z' transform='translate(23 9.6) rotate(40)'/%3E%3C/g%3E%3Cpath d='M6 6.5L8.5 9L6 11.5L3.5 9Z' fill='%23c4a66a' stroke='none'/%3E%3C/g%3E%3Cg fill='%23c4a66a' fill-opacity='.22'%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(0 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(72 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(144 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(216 40 9)'/%3E%3Cellipse cx='40' cy='4.9' rx='2.2' ry='3.5' transform='rotate(288 40 9)'/%3E%3C/g%3E%3Ccircle cx='40' cy='9' r='1.4' fill='%23c4a66a' stroke='none'/%3E%3C/g%3E%3C/svg%3E") center / auto 18px no-repeat,
+    linear-gradient(90deg, rgba(196,166,106,0) 0, rgba(196,166,106,.9) 22%, rgba(196,166,106,.9) calc(50% - 40px), rgba(196,166,106,0) calc(50% - 40px), rgba(196,166,106,0) calc(50% + 40px), rgba(196,166,106,.9) calc(50% + 40px), rgba(196,166,106,.9) 78%, rgba(196,166,106,0) 100%) center / 100% 1px no-repeat;
+}
 </style>
